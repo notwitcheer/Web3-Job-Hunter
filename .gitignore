@@ -13,4 +13,5 @@ config.yaml
 # Python
 __pycache__/
 *.pyc
-.venv/
+.venv/.last_run.log
+job_report_*.html

@@ -5,26 +5,42 @@ Aggregates job listings from 18+ crypto job boards, scores them against your pro
 ## Quick Start
 
 ```bash
-# 1. Install dependencies
+# 1. Clone the repository
+git clone https://github.com/notwitcheer/Web3-Job-Hunter.git
+cd Web3-Job-Hunter
+
+# 2. Set up virtual environment (recommended)
+python3 -m venv .venv
+source .venv/bin/activate  # On Windows: .venv\Scripts\activate
+
+# 3. Install dependencies
 pip install -r requirements.txt
 
-# 2. Edit your filters
-# Open config.yaml and customize:
-#   - title_keywords (what roles you want)
-#   - preferred_keywords (boost score for these)
-#   - exclude_keywords (skip these roles)
-#   - location preferences
-#   - Discord webhook URL (optional)
+# 4. Configure your profile
+# Copy config.yaml to config_personal.yaml and customize:
+cp config.yaml config_personal.yaml
+# Edit: title_keywords, preferred_keywords, exclude_keywords, location preferences
+# Optional: Add Discord webhook URL for notifications
 
-# 3. Run it
+# 5. Test with dry run (preview mode)
+python job_hunter.py --dry-run --verbose
+
+# 6. Run for real
 python job_hunter.py
 
-# 4. Dry run (preview without notifications)
-python job_hunter.py --dry-run
-
-# 5. Verbose mode (debug)
-python job_hunter.py -v
+# 7. Check results
+# View console output, HTML report, and jobs.db for deduplication
 ```
+
+## ⚡ Performance
+
+Based on recent testing:
+- **330+ jobs scraped** from multiple sources in ~20 seconds
+- **Block**: 308 jobs found ✅
+- **a16z**: 22 jobs found ✅
+- **19 qualified matches** for community/growth/marketing roles
+- **HTML report generation**: Professional dark-themed output
+- **SQLite deduplication**: Fast and reliable
 
 ## How It Works
 
@@ -54,16 +70,23 @@ Uses SQLite to track every job seen. Running the script multiple times will only
 - **Discord webhook** — Embed with top matches (add your webhook URL in config)
 - **HTML report** — Slick dark-theme report file
 
-## Automate with Cron
+## 🚀 Quick Run
 
-Run daily at 9 AM:
 ```bash
-# Edit crontab
-crontab -e
+# Run the job hunter (opens HTML report automatically)
+./hunt.sh
 
-# Add this line (adjust paths)
-0 9 * * * cd /path/to/crypto_job_hunter && python job_hunter.py >> hunter.log 2>&1
+# Or set up a global command (one-time setup)
+./setup_alias.sh
+source ~/.zshrc  # or ~/.bashrc
+jobhunt  # Run from anywhere!
 ```
+
+The HTML report opens automatically with:
+- **Clickable job titles** → Direct links to applications
+- **Score-based sorting** → Best matches first
+- **New job highlighting** → See what's fresh
+- **Dark theme** → Easy on the eyes
 
 ## Config Reference
 

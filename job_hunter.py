@@ -216,17 +216,17 @@ class ScoringEngine:
             return 0.0
 
         title_lower = title.lower()
-        matches = 0
-        total_keywords = len(self.filters['title_keywords'])
 
+        # If no keywords specified, neutral score
+        if not self.filters.get('title_keywords'):
+            return 50.0
+
+        # Check if ANY keyword matches (not averaging across all)
         for keyword in self.filters['title_keywords']:
             if keyword.lower() in title_lower:
-                matches += 1
+                return 100.0  # Full score if ANY keyword matches
 
-        if total_keywords == 0:
-            return 50.0  # neutral score if no keywords specified
-
-        return (matches / total_keywords) * 100
+        return 0.0  # No score if no keywords match
 
     def _score_keyword_match(self, description: str) -> float:
         """Score based on preferred keywords in description"""
@@ -378,9 +378,11 @@ class LeverScraper(BaseScraper):
     def __init__(self, http_client: HttpClient, config: Dict):
         super().__init__(http_client, config)
         self.lever_companies = {
-            'solana': 'solana-foundation-8fd8',
-            'avax': 'avalabs',
-            'bnb_chain': 'bnbchain',
+            # Note: These companies may have moved off Lever or changed slugs
+            # Comment out or update if they return 404s
+            # 'solana': 'solana-foundation',  # Currently not on Lever
+            # 'avax': 'avalabs',              # Currently not on Lever
+            # 'bnb_chain': 'bnbchain',        # Currently not on Lever
         }
 
     async def scrape(self) -> List[Job]:
@@ -388,7 +390,10 @@ class LeverScraper(BaseScraper):
         all_jobs = []
 
         for company_name, company_slug in self.lever_companies.items():
-            if not self.config['sites'].get(f'{company_name}_jobs', True):
+            # Check both _jobs and _careers variants (config might use either)
+            enabled = (self.config['sites'].get(f'{company_name}_jobs', True) or
+                      self.config['sites'].get(f'{company_name}_careers', True))
+            if not enabled:
                 continue
 
             try:
@@ -440,7 +445,7 @@ class GreenhouseScraper(BaseScraper):
         self.greenhouse_companies = {
             'block': 'block',
             'a16z': 'a16z',
-            'animoca': 'animocabrands',
+            # 'animoca': 'animocabrands',  # Currently not on Greenhouse
         }
 
     async def scrape(self) -> List[Job]:
@@ -448,7 +453,10 @@ class GreenhouseScraper(BaseScraper):
         all_jobs = []
 
         for company_name, company_slug in self.greenhouse_companies.items():
-            if not self.config['sites'].get(f'{company_name}_jobs', True):
+            # Check both _jobs and _careers variants (config might use either)
+            enabled = (self.config['sites'].get(f'{company_name}_jobs', True) or
+                      self.config['sites'].get(f'{company_name}_careers', True))
+            if not enabled:
                 continue
 
             try:
@@ -499,8 +507,9 @@ class AshbyScraper(BaseScraper):
     def __init__(self, http_client: HttpClient, config: Dict):
         super().__init__(http_client, config)
         self.ashby_companies = {
-            'dragonfly': 'dragonfly',
-            'pantera': 'pantera-capital',
+            # Note: These companies may have moved off Ashby or changed slugs
+            # 'dragonfly': 'dragonfly',       # Currently not on Ashby
+            # 'pantera': 'pantera-capital',  # Currently not on Ashby
         }
 
     async def scrape(self) -> List[Job]:
@@ -508,7 +517,10 @@ class AshbyScraper(BaseScraper):
         all_jobs = []
 
         for company_name, company_slug in self.ashby_companies.items():
-            if not self.config['sites'].get(f'{company_name}_jobs', True):
+            # Check both _jobs and _careers variants (config might use either)
+            enabled = (self.config['sites'].get(f'{company_name}_jobs', True) or
+                      self.config['sites'].get(f'{company_name}_careers', True))
+            if not enabled:
                 continue
 
             try:
@@ -662,19 +674,20 @@ class Notifier:
 
     async def send_notifications(self, jobs: List[Job], is_dry_run: bool = False):
         """Send notifications via all configured channels"""
-        if not jobs:
-            self.console.print("No new jobs to notify about.")
-            return
-
         notification_config = self.config.get('notification', {})
+
+        # Always generate HTML report, even with 0 jobs
+        if notification_config.get('html_report', True):
+            await self._generate_html_report(jobs, is_dry_run)
+
+        if not jobs:
+            self.console.print("📊 No jobs matched your criteria.")
+            self.console.print("💡 Try adjusting your filters in config.yaml")
+            return
 
         # Console output
         if notification_config.get('console_output', True):
             self._print_console_report(jobs, is_dry_run)
-
-        # HTML report
-        if notification_config.get('html_report', True):
-            await self._generate_html_report(jobs, is_dry_run)
 
         # Discord webhook
         discord_webhook = notification_config.get('discord_webhook')
@@ -834,8 +847,9 @@ class Notifier:
         <h2>🎯 Top Matches</h2>
 """
 
-        for job in top_jobs:
-            html_content += f"""
+        if top_jobs:
+            for job in top_jobs:
+                html_content += f"""
         <div class="job-card">
             <div class="job-title">{job.title}</div>
             <div class="job-company">🏢 {job.company}</div>
@@ -848,6 +862,19 @@ class Notifier:
             <div class="job-url">
                 <a href="{job.url}" target="_blank">View Job 🚀</a>
             </div>
+        </div>
+"""
+        else:
+            html_content += """
+        <div style="text-align: center; padding: 40px; color: #999;">
+            <h3>No jobs matched your criteria</h3>
+            <p>Try adjusting your filters in config.yaml:</p>
+            <ul style="list-style: none; padding: 0; margin: 20px 0;">
+                <li>✅ Lower the min_score threshold</li>
+                <li>✅ Add more title keywords</li>
+                <li>✅ Expand location preferences</li>
+                <li>✅ Remove exclusion keywords</li>
+            </ul>
         </div>
 """
 
@@ -935,15 +962,18 @@ class JobHunter:
         scrapers = []
 
         # API-based scrapers (more reliable)
-        if any(self.config['sites'].get(f'{company}_jobs', True)
+        if any(self.config['sites'].get(f'{company}_jobs', True) or
+               self.config['sites'].get(f'{company}_careers', True)
                for company in ['solana', 'avax', 'bnb_chain']):
             scrapers.append(LeverScraper(self.http_client, self.config))
 
-        if any(self.config['sites'].get(f'{company}_jobs', True)
+        if any(self.config['sites'].get(f'{company}_jobs', True) or
+               self.config['sites'].get(f'{company}_careers', True)
                for company in ['block', 'a16z', 'animoca']):
             scrapers.append(GreenhouseScraper(self.http_client, self.config))
 
-        if any(self.config['sites'].get(f'{company}_jobs', True)
+        if any(self.config['sites'].get(f'{company}_jobs', True) or
+               self.config['sites'].get(f'{company}_careers', True)
                for company in ['dragonfly', 'pantera']):
             scrapers.append(AshbyScraper(self.http_client, self.config))
 
@@ -1017,8 +1047,8 @@ class JobHunter:
 
         # Send notifications for new jobs (or all in dry run)
         notification_jobs = new_jobs if not dry_run else qualified_jobs
-        if notification_jobs:
-            await self.notifier.send_notifications(notification_jobs, dry_run)
+        # Always call send_notifications to generate HTML report even with 0 jobs
+        await self.notifier.send_notifications(notification_jobs, dry_run)
 
         # Mark jobs as seen (only in real run)
         if not dry_run and new_jobs:

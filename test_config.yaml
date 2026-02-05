@@ -1,0 +1,85 @@
+# Test configuration - only enable working sites
+profile:
+  name: "Witcheer"
+  resume_keywords:
+    - community manager
+    - growth lead
+    - content creator
+    - marketing
+
+filters:
+  title_keywords:
+    - community
+    - growth
+    - content
+    - marketing
+
+  required_keywords: []
+
+  preferred_keywords:
+    - DeFi
+    - community
+    - Web3
+    - blockchain
+    - crypto
+    - marketing
+
+  exclude_keywords:
+    - senior engineer
+    - staff engineer
+    - backend engineer
+    - frontend engineer
+
+  location:
+    remote_only: true
+    preferred_locations:
+      - remote
+      - worldwide
+    excluded_locations: []
+
+  experience_levels:
+    - mid
+    - senior
+
+scoring:
+  title_match_weight: 35
+  keyword_match_weight: 30
+  location_match_weight: 15
+  recency_weight: 20
+  min_score: 20
+  max_results: 20
+
+notification:
+  discord_webhook: ""
+  html_report: true
+  console_output: true
+
+scraping:
+  request_delay: 1
+  timeout: 30
+  user_agent: "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36"
+  max_retries: 2
+
+sites:
+  # Only enable working sites for testing
+  web3_career: false
+  crypto_careers: false
+  cryptocurrency_jobs: false
+  cryptojobslist: false
+  beincrypto_jobs: false
+  jobstash: false
+  remote3: false
+
+  # Test only these working ones
+  solana_jobs: false
+  avax_jobs: false
+  dragonfly_jobs: false
+  block_careers: true    # This worked (308 jobs)
+  bnbchain_jobs: false
+  ethereum_jobs: false
+
+  a16z_jobs: true       # This worked (22 jobs)
+  pantera_jobs: false
+  animoca_careers: false
+  midnight_careers: false
+  tron_careers: false

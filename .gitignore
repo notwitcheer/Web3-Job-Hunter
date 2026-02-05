@@ -1,0 +1,16 @@
+# Database
+jobs.db
+
+# Reports
+job_report_*.html
+
+# Logs
+hunter.log
+
+# Config with secrets (webhook URL)
+config.yaml
+
+# Python
+__pycache__/
+*.pyc
+.venv/
